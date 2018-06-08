@@ -31,7 +31,26 @@ bool BasicFileLauncher::launchFiles(const FileInfoList& fileInfos, GAppLaunchCon
     for(auto& fileInfo : fileInfos) {
         // qDebug("path: %s, target: %s", fileInfo->path().toString().get(), fileInfo->target().c_str());
         if(fileInfo->isDir()) {
-            folderInfos.emplace_back(fileInfo);
+            if(!fileInfo->target().empty()) {
+                FilePath path;
+                if(CStrPtr{g_uri_parse_scheme(fileInfo->target().c_str())}) {
+                    path = FilePath::fromPathStr(fileInfo->target().c_str());
+                    GErrorPtr err{G_IO_ERROR, G_IO_ERROR_NOT_MOUNTED,
+                                  QObject::tr("The path is not mounted.")};
+                    if(!showError(ctx, err, path, fileInfo)) {
+                        continue;
+                    }
+                }
+                else {
+                    path = FilePath::fromLocalPath(fileInfo->target().c_str());
+                }
+                if(path.isValid()) {
+                    pathsToLaunch.emplace_back(path);
+                }
+            }
+            else {
+                folderInfos.emplace_back(fileInfo);
+            }
         }
         else if(fileInfo->isMountable()) {
             if(fileInfo->target().empty()) {
